@@ -1,0 +1,262 @@
+<html>
+    <head>
+        <meta charset="UTF-8"/>
+        <link rel="stylesheet" href="node_modules/reveal.js/css/reveal.css">
+        <link rel="stylesheet" href="node_modules/reveal.js/css/theme/white.css">
+        <style>
+            img {
+                border: 0 !important;
+                box-shadow: none !important;
+                max-height: 500px !important;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="reveal">
+            <div class="slides">
+                <section data-markdown>
+                    <script type="text/template">
+                        ## Разработка изоморфных веб-приложений с ASP.NET Core и JavaScriptServices
+                        ---
+                        <footer style="text-align: right;">
+                            by: <img src="images/avatar.png"
+                                     style="width: 1em; height: 1em; margin: 0; border: 0; box-shadow: none;" /><br/>
+                            https://github.com/ForNeVeR<br/>
+                            https://fornever.me/
+                        </footer>
+
+                        <aside class="notes">
+                            Сегодня мы поговорим о том, что такое изоморфные
+                            приложения, и какие есть современные подходы к их
+                            разработке на стеке .NET.
+                        </aside>
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                        ## Схема работы веб-приложения
+
+                        ![Запросы к
+                        веб-приложению](images/architecture-classic.svg)
+
+
+                        <aside class="notes">
+                            Вспомним, как работают обычные современные
+                            веб-приложения (под «современными» я имею в виду
+                            приложения, которые активно используют JavaScript и
+                            манипуляции разметкой на клиенте — в первую очередь
+                            использующие такие библиотеки, как Angular или
+                            React).
+
+                            Браузерный клиент делает запрос к серверу, и
+                            получает разметку и скрипты в ответ. Это самый
+                            обычный запрос, и вообще все приложения делают так
+                            же.
+
+                            После того, как клиент подгрузил скрипты, разметкой
+                            управляют именно они: скрипты общаются с сервером,
+                            передавая туда и получая обратно JSON. HTML мы с
+                            этого момента уже не передаём.
+
+                            У этой схемы есть и преимущества, и недостатки.
+                        </aside>
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                        ## Схема работы веб-приложения
+
+                        ![Запросы к
+                        веб-приложению](images/architecture-classic.svg)
+
+                        - `+` существенное упрощение серверного кода
+                        - `+` уменьшение трафика
+                        - `+` возможность использования API другими клиентами
+
+                        <aside class="notes">
+                            Основное преимущество — архитектурное: нам больше не
+                            нужно на сервере поддерживать инфраструктуру для
+                            рендеринга HTML-разметки. Практика показывает, что
+                            это отлично развязывает код и делает его чище.
+                            Клиентскую часть могут делать люди, которые хорошо
+                            разбираются в JS и HTML, а серверную — те, кто
+                            хорошо понимает ASP.NET, и эти люди друг другу не
+                            мешают.
+
+                            Помимо этого, есть преимущество в плане трафика —
+                            понятно, что, если мы не дублируем большой HTML на
+                            каждый запрос, то трафик это уменьшает.
+
+                            Помимо этого, сегодня в приложениях
+                            энтерпрайз-класса часто возникает надобность либо
+                            разработать мобильное приложение и веб-часть
+                            отдельно, или интегрироваться с какими-то внешними
+                            сервисами или клиентами. Часто эти внешние участки
+                            могут использовать тот же самый API.
+                        </aside>
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                        ## Схема работы веб-приложения
+
+                        ![Запросы к
+                        веб-приложению](images/architecture-classic.svg)
+
+                        - `-` увеличенное количество запросов
+                        - `-` плохая совместимость с SEO
+
+                        <aside class="notes">
+                            Теперь рассмотрим недостатки.
+
+                            Итак, запросов в принципе становится больше. Если
+                            раньше пользователь мог загрузить разметку, и сразу
+                            начинать пользоваться сайтом, когда у него
+                            докрутился прогресс-бар в браузере, то больше он
+                            этого сделать не может. Сначала браузер всё
+                            докачивает, потом отрабатывают скрипты, ещё раз идут
+                            на сервер уже по API, и только потом заканчивают
+                            работу. В это время мы либо показываем пользователю
+                            ещё один прогресс-бар уже в приложении, либо
+                            показываем ему какие-то обрывки шаблонов и мешанину
+                            разметки (что, вообще-то, в высококачественном
+                            приложении недопустимо).
+
+                            Помимо этого, у поисковых движков совместимость с
+                            такими приложениями крайне ограничена. Да, сегодня
+                            основные поисковики (Яндекс и Google) пытаются
+                            понемногу индексировать такие сайты, но до сих пор
+                            делают это не идеально. О менее распространённых
+                            поисковиках говорить не приходится (а вы удивитесь,
+                            какие странные бывают заказчики и пользователи;
+                            некоторым это бывает важно).
+                        </aside>
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                        ## Схема работы изоморфного приложения
+
+                        ![Запросы к изоморфному
+                        веб-приложению](images/architecture-isomorphic.svg)
+
+                        <aside class="notes">
+                            А теперь посмотрим, чем отличается изоморфное
+                            веб-приложение. Сегодня, в 2017 году, у нас есть
+                            способ выполнить наш JavaScript-код на сервере: это
+                            платформа Node.js.
+
+                            Когда клиент просит у приложения отдать ему
+                            начальный пакет разметки и скриптов, сервер сначала
+                            просит Node.js обработать клиентские компоненты и
+                            сгенерировать по ним настоящую, полноценную
+                            разметку, и уже эти данные отдаёт клиенту. Сразу же,
+                            с данными первого запроса клиент получает все нужные
+                            данные для отображения странички. У нас становится
+                            на несколько HTTP-запросов меньше, а те клиенты,
+                            которые не поддерживают выполнение JS (в первую
+                            очередь поисковые роботы) получают полноценный
+                            контент странички.
+                        </aside>
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                        ## JavaScriptServices
+
+                        https://github.com/aspnet/JavaScriptServices
+
+                        ![Страничка на
+                        GitHub](images/github-javascriptservices.png)
+
+                        <aside class="notes">
+                            К счастью, нам не придётся городить свой собственный
+                            огород для того, чтобы организовать общение нашего
+                            сервера с Node.js, поддерживать пул процессов и пр.
+
+                            Microsoft всё сделали за нас, и для ASP.NET Core
+                            доступен пакет библиотек, который имеет общее
+                            название JavaScriptServices.
+
+                            Собственно библиотека состоит из двух частей:
+                            низкоуровневые NodeServices и высокоуровные
+                            SpaServices.
+                        </aside>
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                        ## NodeServices
+
+                        ```javascript
+                        module.exports = function (callback, first, second) {
+                            var result = first + second;
+                            callback(/* error */ null, result);
+                        };
+                        ```
+
+                        ```csharp
+                        public async Task<IActionResult> MyAction([FromServices] INodeServices nodeServices)
+                        {
+                            var result = await nodeServices.InvokeAsync<int>("./addNumbers", 1, 2);
+                            return Content("1 + 2 = " + result);
+                        }
+                        ```
+
+                        <aside class="notes">
+                            Вот так выглядит пример на NodeServices. Эта
+                            библиотека позволяет асинхронно вызывать
+                            произвольный JS-код, оформленный в виде модуля
+                            Node.js.
+                        </aside>
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                        ## Установка JavaScriptServices
+
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                        ## Клиентский рендеринг
+
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                        ## Серверный рендеринг
+
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                        ## Это конец
+
+                        <br/><br/><br/>
+                        <small>Слайды доступны в репозитории https://github.com/ForNeVeR/talk-javascriptservices</small>
+                    </script>
+                </section>
+            </div>
+        </div>
+        <script src="node_modules/reveal.js/lib/js/head.min.js"></script>
+        <script src="node_modules/reveal.js/js/reveal.js"></script>
+        <script>
+            var isPrintMode = window.location.search.match(/print-pdf/gi);
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.type = 'text/css';
+            link.href = isPrintMode
+                ? 'node_modules/reveal.js/css/print/pdf.css'
+                : 'node_modules/reveal.js/css/print/paper.css';
+            document.getElementsByTagName('head')[0].appendChild(link);
+            Reveal.initialize({
+                dependencies: [
+                    { src: 'node_modules/reveal.js/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+                    { src: 'node_modules/reveal.js/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } }
+                ],
+                showNotes: isPrintMode
+            });
+        </script>
+    </body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "talk-javascriptservices",
+  "version": "1.0.0",
+  "description": "A talk in Russian about JavaScriptServices library.",
+  "main": "index.js",
+  "author": "Friedrich von Never",
+  "license": "MIT",
+  "dependencies": {
+    "reveal.js": "^3.5.0"
+  }
+}
