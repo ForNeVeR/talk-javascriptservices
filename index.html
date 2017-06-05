@@ -3,6 +3,7 @@
         <meta charset="UTF-8"/>
         <link rel="stylesheet" href="node_modules/reveal.js/css/reveal.css">
         <link rel="stylesheet" href="node_modules/reveal.js/css/theme/white.css">
+        <link rel="stylesheet" href="node_modules/highlight.js/styles/agate.css"/>
         <style>
             img {
                 border: 0 !important;
@@ -189,6 +190,7 @@
                         ## NodeServices
 
                         ```javascript
+                        // addNumbers.js
                         module.exports = function (callback, first, second) {
                             var result = first + second;
                             callback(/* error */ null, result);
@@ -196,9 +198,12 @@
                         ```
 
                         ```csharp
-                        public async Task<IActionResult> MyAction([FromServices] INodeServices nodeServices)
+                        // MyController.cs
+                        public async Task<IActionResult> MyAction(
+                            [FromServices] INodeServices nodeServices)
                         {
-                            var result = await nodeServices.InvokeAsync<int>("./addNumbers", 1, 2);
+                            var result = await nodeServices.InvokeAsync<int>(
+                                "./addNumbers", 1, 2);
                             return Content("1 + 2 = " + result);
                         }
                         ```
@@ -213,20 +218,162 @@
                 </section>
                 <section data-markdown>
                     <script type="text/template">
-                        ## Установка JavaScriptServices
+                        ## SpaServices: cshtml
 
+                        ```csharp
+                        <!-- MyAction.html -->
+                        <div id="my-spa" asp-prerender-module="ClientApp/boot-server"
+                             asp-prerender-data="new {
+                                 IsGoldUser = true,
+                                 Cookies = ViewContext.HttpContext.Request.Cookies
+                             }"></div>
+                        ```
+
+                        <aside class="notes">
+                            Работа полноценного варианта SpaServices
+                            основывается на трёх компонентах: хелперы в cshtml,
+                            серверный JS, клиентский JS.
+
+                            Вот так выглядит код, который вставляется в cshtml.
+                        </aside>
                     </script>
                 </section>
                 <section data-markdown>
                     <script type="text/template">
-                        ## Клиентский рендеринг
+                        ## SpaServices: серверный JS
 
+                        ```javascript
+                        // boot-server.js
+                        var prerendering = require('aspnet-prerendering');
+                        module.exports = prerendering.createServerRenderer((params) => {
+                            return new Promise(function (resolve, reject) {
+                                var result = '<h1>Hello world!</h1>'
+                                    + '<p>Is gold user: ' +
+                                        params.data.isGoldUser + '</p>'
+                                    + '<p>Number of cookies: ' +
+                                        params.data.cookies.length + '</p>';
+                                resolve({ html: result,
+                                          globals: {
+                                              albumsList: someDataHere,
+                                              userData: someMoreDataHere
+                                          } }); }); });
+                        ```
+
+                        <aside class="notes">
+                            Вот так выглядит серверный JS. Данный пример
+                            отрендерит подготовленный HTML, а также заполнит
+                            переменные `window.albumsList` и `window.userData`
+                            какими-то данными, вычисленными на сервере в
+                            JS-коде.
+                        </aside>
                     </script>
                 </section>
                 <section data-markdown>
                     <script type="text/template">
-                        ## Серверный рендеринг
+                        ## SpaServices: React
 
+                        ```javascript
+                        // boot-client.js
+                        const initialState = (window as any).initialReduxState;
+                        const store = configureStore(initialState);
+                        const history = syncHistoryWithStore(browserHistory, store);
+
+                        ReactDOM.render(
+                            <Provider store={ store }>
+                                <Router history={ history } children={ routes } />
+                            </Provider>,
+                            document.getElementById('react-app')
+                        );
+                        ```
+
+                        <aside class="notes">
+                            Конечно, предыдущий пример выглядит очень
+                            специфическим и упрощённым, потому что он не
+                            учитывает ещё одной особенности современных
+                            веб-приложений: роутинга. Понятно, что никто не
+                            хочет делать кучу JS-файлов для разных страниц. А,
+                            если серверный код не будет поддерживать клиентский
+                            роутинг, то придётся это делать (потому что на
+                            разных страницах в приложении обычно размещаются
+                            разные компоненты).
+
+                            Поэтому давайте рассмотрим вот такой простой пример
+                            приложения на React с react-router и redux. Импорты
+                            я опускаю для упрощения кода. (Если нужно, всё это
+                            есть в шаблоне приложения, доступном через `dotnet
+                            new`.)
+                        </aside>
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                        ## SpaServices: React (сервер)
+
+                        ```javascript
+                        import { match } from 'react-router';
+                        import routes from './routes';
+                        export default createServerRenderer(params => {
+                          return new Promise((resolve, reject) => {
+                            match({ routes, location: params.location },
+                              (error, redirectLocation, renderProps: any) => {
+                              const app = (
+                                <Provider store={ store }>
+                                  <RouterContext {...renderProps} />
+                                </Provider>);
+                              params.domainTasks.then(() => {
+                                resolve({ html: renderToString(app),
+                                  globals: { initialReduxState: store.getState() } });
+                              }, reject); }); }); });
+                        ```
+
+                        <aside class="notes">
+                            А вот так выглядит изрядно сокращённый вариант
+                            серверного кода. Как видно, подменяется только один
+                            основной файл приложения; весь клиентский код
+                            полностью переиспользуется сервером. Роутинг
+                            работает за счёт специальной функции `match`,
+                            которая входит в состав `react-router`.
+                        </aside>
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                        ## SpaServices: что ещё
+
+                        - интеграция с webpack + hot module replacement
+                        - Angular, Knockout, Vue, Aurelia...
+                        - TypeScript
+
+                        <aside class="notes">
+                            Мы не успели обсудить множество дополнительных
+                            возможностей, которые предоставляет библиотека
+                            JavaScriptServices. Количество дополнительных фич
+                            просто огромно, а инструкции по их настройке
+                            занимают экраны текста.
+                        </aside>
+                    </script>
+                </section>
+                <section data-markdown>
+                    <script type="text/template">
+                        ## SpaServices: шаблон приложения
+
+                        ```bash
+                        $ dotnet new --install Microsoft.AspNetCore.SpaTemplates::*
+                        $ dotnet new reactredux # aurelia,                    \
+                        $                       # angular,                    \
+                        $                       # knockout,                   \
+                        $                       # react,                      \
+                        $                       # vue
+                        ```
+
+                        <aside class="notes">
+                            К счастью, есть обширный набор примеров и шаблонов
+                            проектов, которые доступны с помощью стандартного
+                            механизма шаблонов в инструментарии `dotnet`: можно
+                            установить и развернуть шаблоны с помощью командной
+                            строки, а потом работать с ними из Visual Studio или
+                            VSCode.
+                        </aside>
                     </script>
                 </section>
                 <section data-markdown>
@@ -253,7 +400,10 @@
             Reveal.initialize({
                 dependencies: [
                     { src: 'node_modules/reveal.js/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
-                    { src: 'node_modules/reveal.js/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } }
+                    { src: 'node_modules/reveal.js/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+                    { src: 'node_modules/reveal.js/plugin/highlight/highlight.js', async: true, callback: function() {
+                        console.log(document.getElementsByTagName('code'));
+                        hljs.initHighlightingOnLoad(); } },
                 ],
                 showNotes: isPrintMode
             });
